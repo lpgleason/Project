@@ -2,7 +2,10 @@
 title: "NURSG 741 Project"
 author: "Lacey Gleason"
 date: "2/14/2018"
-output: html_document
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
 ---
 
 # Milestone 1

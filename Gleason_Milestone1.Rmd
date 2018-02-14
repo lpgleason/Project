@@ -17,7 +17,7 @@ output: html_document
 I am interested in undertaking this project because I am a big baseball fan. In addition to causing diminished health status and loss Since baseball player salaries are guaranteed, injuries can be especially costly for teams. As there are many factors involved, I am interested in better understanding what player characteristics are associated with placement on the disabled list in an upcoming season. I also picked this project because it will require me to develop a number of skills including web scraping and data wrangling from a number of large databases with layered data. 
 
 ## Project Objectives ![](https://upload.wikimedia.org/wikipedia/en/1/1e/Baseball_%28crop%29.jpg){width=30px}  
-The focal question that I am trying to answer is what Major League Baseball player characteristics were associated with placement on the disabled list during the 2017 season. I would like to learn how to conduct web scraping by gathering transaction data from the MLB website, which allows this practice. I would also like to improve my data wrangling skills in R by combining data from multiple large data sources, which will require pulling data into R, assessing missing information, collapsing data to create summary measures for certain player characteristics, merging data, and creating a model for probabilty of placement on the disabled list and number of days on the disabled list among those who were placed on the disabled list.
+The focal question that I am trying to answer is what Major League Baseball player characteristics were associated with placement on the disabled list during the 2017 season. I would like to learn how to conduct web scraping by gathering transaction data from the MLB website, which allows this practice. I would also like to improve my data wrangling skills in R by combining data from multiple large data sources, which will require pulling data into R, assessing missing information, collapsing data to create summary measures for certain player characteristics, merging data, and creating a model for probability of placement on the disabled list and number of days on the disabled list among those who were placed on the disabled list.
 
 ### Player Characteristics of Interest
 
@@ -61,9 +61,9 @@ The analytic sample will include all players who played in the MLB in both 2016 
 ## Schedule of Weekly Tasks/Goals ![](https://upload.wikimedia.org/wikipedia/en/1/1e/Baseball_%28crop%29.jpg){width=30px}  
 | Week        | Task                                                                        |
 |:-----------:|:----------------------------------------------------------------------------|
-| February 12 | Complete Milestone 1, Schedule meeting to disucss proposal |
+| February 12 | Complete Milestone 1, Schedule meeting to discuss proposal |
 | February 19 | Complete web scraping of MLB transactions data |
-| February 26 | Clean transaction data, aggregate data by player, write formulas to calculate days on disabled list, number of times on disabled list, body part associated with disabled list transation |
+| February 26 | Clean transaction data, aggregate data by player, write formulas to calculate days on disabled list, number of times on disabled list, body part associated with disabled list transaction |
 | March 5 | Pull data from Baseball Reference on player characteristics of interest and add to disabled list data matching by player ID |
 | March 12 | Write code for descriptive statistics, set up model, submit working prototype |
 | March 19 | Create Table 1 for descriptive statistics, create tables/graphs for model results |

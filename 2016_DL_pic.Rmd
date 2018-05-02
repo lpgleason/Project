@@ -1,0 +1,330 @@
+---
+title: "NURSG 741 Project - 2016 DL data"
+author: "Lacey Gleason"
+date: "May 2, 2018"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+# Milestone 3
+
+## Basic Information ![](https://upload.wikimedia.org/wikipedia/en/1/1e/Baseball_%28crop%29.jpg){width=30px}  
+
+**Project Title:** Predictors of Major League Baseball Player Injury in 2017   
+**Author Name:** Lacey Gleason  
+**Email Address:** lpgleas@emory.edu  
+
+### Load Libraries
+```{r library}
+
+library(readxl)
+library(plyr)
+library(dplyr)
+library(wordcloud)
+library(RColorBrewer)
+library(tm)
+library(NLP)
+library(stringr)
+library(tidyr)
+
+```
+
+
+### Import MLB Transaction Data
+```{r import transaction data}
+
+# Import transaction data from MLB.com
+# Downloaded as Excel file - includes all transactions for all months in 2017
+
+transactions16 <- read_excel("Trans2016.xlsx", 
+     sheet = "Sheet1")
+
+head(transactions16)
+
+transactions16$Clean <- gsub("[[:space:]]", " ", transactions16$Transaction) 
+
+```
+
+### Filter Transaction Data for Disabled List Transactions
+First, we need to filter just for disabled list transactions.
+```{r filter for DL transactions}
+
+# Filter just for those transactions that contain the term 'disabled list' - call dataframe new
+
+new_16 <- dplyr::filter(transactions16, grepl('disabled list', Clean))
+head(new_16)
+
+```
+
+### Create Variables in Data Frame to Describe the Transactions
+
+```{r type of DL transaction}
+
+# create a new variable for action to reflect what kind of DL action it is
+  ## Placed means first instance of player being assigned to DL
+  ## Transferred means player was moved from shorter DL list to longer DL list
+  ## Activated means player was put back on active roster from DL
+
+new_16$action <- ifelse(grepl("transfer", new_16$Clean, ignore.case = T), "Transferred", 
+         ifelse(grepl("place", new_16$Clean, ignore.case = T), "Placed", ifelse(grepl("activate", new_16$Clean, ignore.case =T), "Activated", "Other")))
+
+#make a frequency table of action 
+act_count <- plyr::count(new_16, 'action')
+act_count
+
+```
+
+```{r player position}
+
+# Create variable for position of player
+new_16$position <- ifelse(grepl(" C ", new_16$Clean, ignore.case = F), "Catcher", ifelse(grepl("1B", new_16$Clean, ignore.case = F), "First Baseman", ifelse(grepl("2B", new_16$Clean, ignore.case =F), "Second Baseman", ifelse(grepl("3B", new_16$Clean, ignore.case =F), "Third Baseman", ifelse(grepl("SS", new_16$Clean, ignore.case =F), "Shortstop", ifelse(grepl("RF", new_16$Clean, ignore.case =F), "Right Fielder", ifelse(grepl("CF", new_16$Clean, ignore.case =F), "Center Fielder", ifelse(grepl("LF", new_16$Clean, ignore.case =F), "Left Fielder", ifelse(grepl("RHP", new_16$Clean, ignore.case =F), "Pitcher", ifelse(grepl("LHP", new_16$Clean, ignore.case =F), "Pitcher", ifelse(grepl(" P ", new_16$Clean, ignore.case =F), "Pitcher", ifelse(grepl("DH", new_16$Clean, ignore.case =F), "Designated Hitter", ifelse(grepl("OF", new_16$Clean, ignore.case =F), "Outfielder", "Other")))))))))))))
+
+# Create frequency table of position
+pos_count <- plyr::count(new_16, 'position')
+pos_count
+
+```
+
+```{r DL length}
+
+# Create a new variable called list that refelcts type of DL referenced in transaction
+new_16$list <- ifelse(grepl("10-day", new_16$Clean, ignore.case = T), "10-day", ifelse(grepl("60-day", new_16$Clean, ignore.case = T), "60-day", ifelse(grepl("7-day", new_16$Clean, ignore.case = T), "7-day", ifelse(grepl("15-day", new_16$Clean, ignore.case = T), "15-day", "Other"))))
+
+
+#make a frequency table of type of disabled list
+list_count <- plyr::count(new_16, 'list')
+list_count
+
+```
+
+
+```{r retroactive DL actions}
+
+# Create new variable to indicate if this DL transaction is a retroactive move?
+new_16$retro <- ifelse(grepl("retroactive", new_16$Clean, ignore.case = T), "Yes", "No")
+
+#make a frequency table of action 
+retro_count <- plyr::count(new_16, 'retro')
+retro_count
+
+```
+
+
+```{r surgery}
+# Create a variable to indicate if surgery is indicated in DL transaction description
+new_16$surg <- ifelse(grepl("surgery", new_16$Clean, ignore.case = T), "Yes", "No")
+
+#make a frequency table of surgery 
+surg_count <- plyr::count(new_16, 'surg')
+surg_count
+
+```
+
+```{r}
+# Create variable for concussion involvement
+new_16$concuss <- ifelse(grepl("concussion", new_16$Clean, ignore.case = T), "1", "0")
+
+#make a frequency table of action 
+concuss_count <- plyr::count(new_16, 'concuss')
+concuss_count
+
+```
+
+```{r side of body}
+# Create new variable to indicate side of body of injury
+new_16$side <- ifelse(grepl("right", new_16$Clean, ignore.case = T), "Right", ifelse(grepl("left", new_16$Clean, ignore.case = T), "Left", "Unknown"))
+
+#make a frequency table of action 
+side_count <- plyr::count(new_16, 'side')
+side_count
+
+```
+
+```{r}
+# Tommy John Surgery indicator
+new_16$tom <- ifelse(grepl("Tommy John", new_16$Clean, ignore.case = T), "1", ifelse(grepl(" UCL ", new_16$Clean, ignore.case = T), "1", ifelse(grepl("ulnar collateral", new_16$Clean, ignore.case = T), "1", "0")))
+
+#make a frequency table of action 
+tom_count <- plyr::count(new_16, 'tom')
+tom_count
+
+```
+
+
+```{r transaction month}
+# create variable for month of transaction - later it will be useful to have this
+new_16$month <- format(new_16$Date,"%B")
+
+```
+
+```{r name extraction}
+
+tibs_16 <- tibble(new_name = new_16$Clean) %>% 
+  tidyr::extract(
+    new_name, c("trans_type", "position", "first", "last"), "(placed|activated|transferred) ([^ ]+) ([^ ]+) ([^ ]+)", 
+    remove = FALSE
+  )
+
+new_16$first <- tibs_16$first
+new_16$last <-tibs_16$last
+new_16$pos_short <- tibs_16$position
+
+```
+
+```{r Team Name}
+
+# Pull out team name 
+
+new_16$team <- word(new_16$Clean, 1, 3, sep = fixed(" "))
+
+new_16$team_name <- ifelse(grepl("Diamondbacks", new_16$Clean, ignore.case = T), "ARI", ifelse(grepl("Braves", new_16$Clean, ignore.case = F), "ATL", ifelse(grepl("Orioles", new_16$Clean, ignore.case =T), "BAL", ifelse(grepl("Boston", new_16$Clean, ignore.case =T), "BOS", ifelse(grepl("Cubs", new_16$Clean, ignore.case =T), "CHC", ifelse(grepl("White Sox", new_16$Clean, ignore.case =T), "CHW", ifelse(grepl("Cincinnati", new_16$Clean, ignore.case =T), "CIN", ifelse(grepl("Cleveland", new_16$Clean, ignore.case =T), "CLE", ifelse(grepl("Rockies", new_16$Clean, ignore.case =T), "COL", ifelse(grepl("Detroit", new_16$Clean, ignore.case =T), "DET", ifelse(grepl("Marlins", new_16$Clean, ignore.case =T), "FLA", ifelse(grepl("Houston", new_16$Clean, ignore.case =T), "HOU", ifelse(grepl("Kansas", new_16$Clean, ignore.case =T), "KAN", ifelse(grepl("Angels", new_16$Clean, ignore.case =T), "LAA", ifelse(grepl("Dodgers", new_16$Clean, ignore.case =T), "LAD", ifelse(grepl("Milwaukee", new_16$Clean, ignore.case =T), "MIL", ifelse(grepl("Minnesota", new_16$Clean, ignore.case =T), "MIN", ifelse(grepl("Mets", new_16$Clean, ignore.case =T), "NYM", ifelse(grepl("Yankees", new_16$Clean, ignore.case =T), "NYY", ifelse(grepl("Athletics", new_16$Clean, ignore.case =T), "OAK", ifelse(grepl("Philadelphia", new_16$Clean, ignore.case =T), "PHI",  ifelse(grepl("Pittsburgh", new_16$Clean, ignore.case =T), "PIT", ifelse(grepl("San Diego", new_16$Clean, ignore.case =T), "SD", ifelse(grepl("San Francisco", new_16$Clean, ignore.case =T), "SF", ifelse(grepl("Mariners", new_16$Clean, ignore.case =T), "SEA",  ifelse(grepl("Cardinals", new_16$Clean, ignore.case =T), "STL", ifelse(grepl("Tampa Bay", new_16$Clean, ignore.case =T), "TB", ifelse(grepl("Texas Rangers", new_16$Clean, ignore.case =T), "TEX",  ifelse(grepl("Toronto", new_16$Clean, ignore.case =T), "TOR", ifelse(grepl("Nationals", new_16$Clean, ignore.case =T), "WAS", "Other"))))))))))))))))))))))))))))))
+
+
+#make a frequency table of action 
+team_count <- plyr::count(new_16, 'team_name')
+team_count
+
+```
+
+
+```{r retroactive date}
+
+## Three chunks of text following "retroactive to"
+
+retro_tib_16 <- tibble(retro_day = new_16$Clean) %>% 
+  tidyr::extract(
+    retro_day, c("signal", "month", "day", "year"), "(retroactive to) ([^ ]+) ([^ ]+) ([^ ]+)", 
+    remove = FALSE
+  )
+
+retro_tib_16$retro_date <- paste(retro_tib_16$month, retro_tib_16$day, retro_tib_16$year, sep = " ")
+
+# Remove period at the end of the date
+retro_tib_16$retro_date2 <- str_replace_all(retro_tib_16$retro_date, pattern = "[.]", "")
+# Remove repeated NAs from the pasting
+retro_tib_16$retro_date2 <- str_replace_all(retro_tib_16$retro_date2, pattern = "NA NA NA", "")
+
+new_16$retro_date <- retro_tib_16$retro_date2
+
+```
+
+## Export data to Excel to bring into Stata and merge with other player stats
+```{r}
+
+write.csv(new_16, "/Users/Lacey/Desktop/N741/new_16.csv", row.names=F)
+
+```
+
+
+## Create word cloud of disabled list descriptions 
+Next, let's see if we can make a wordcloud of the disabled list descriptions. 
+```{r create DL list}
+
+# remove punctuation 
+transactions16$wordcloud <- str_replace_all(transactions16$Clean, pattern = "[:punct:]", "")
+
+DL_lines <- grep("disabled list", transactions16$wordcloud, value = TRUE)
+length(DL_lines)
+head(DL_lines)
+```
+
+```{r wordcloud 1}
+# Make wordcloud of words used in disabled list transactions 
+
+wordcloud(VCorpus(VectorSource(DL_lines)), max.words = 15, scale =c(5.5,.4), colors = topo.colors(n=30), random.color = TRUE)
+```
+
+```{r}
+#Get rid of common words so that word cloud is more interesting
+# took out common words like "the" and also word that are part of multiple teams' names 
+#(e.g., Los, York, Chicago)
+
+pattern <- "disabled"
+DL_lines2 <- sub(pattern, "", DL_lines)
+
+tail(DL_lines2)
+DL_lines2[200:220]
+
+pattern2 <- "list"
+DL_lines2 <- sub(pattern2, "", DL_lines2)
+pattern3 <- "Chicago"
+DL_lines2 <- sub(pattern3, "", DL_lines2)
+pattern4 <- "San"
+DL_lines2 <- sub(pattern4, "", DL_lines2)
+pattern5 <- "Los"
+DL_lines2 <- sub(pattern5, "", DL_lines2)
+pattern6 <- "New"
+DL_lines2 <- sub(pattern6, "", DL_lines2)
+pattern7 <- " on"
+DL_lines2 <- sub(pattern7, "", DL_lines2)
+pattern8 <- " the"
+DL_lines2 <- sub(pattern8, "", DL_lines2)
+pattern9 <- "from"
+DL_lines2 <- sub(pattern9, "", DL_lines2)
+pattern10 <- " The "
+DL_lines2 <- sub(pattern10, "", DL_lines2)
+pattern11 <- "Angeles"
+DL_lines2 <- sub(pattern11, "", DL_lines2)
+pattern12 <- "list."
+DL_lines2 <- sub(pattern12, "", DL_lines2)
+pattern13 <- "2017"
+DL_lines2 <- sub(pattern13, "", DL_lines2)
+pattern14 <- "York"
+DL_lines2 <- sub(pattern14, "", DL_lines2)
+pattern15 <- "Red"
+DL_lines2 <- sub(pattern15, "", DL_lines2)
+pattern16 <- "Blue"
+DL_lines2 <- sub(pattern16, "", DL_lines2)
+pattern17 <- "Bay"
+DL_lines2 <- sub(pattern17, "", DL_lines2)
+pattern18 <- "to the"
+DL_lines2 <- sub(pattern18, "", DL_lines2)
+pattern19 <- " and"
+DL_lines2 <- sub(pattern19, "", DL_lines2)
+pattern20 <- "Disabled"
+DL_lines2 <- sub(pattern20, "", DL_lines2)
+pattern21 <- "Sox"
+DL_lines2 <- sub(pattern21, "", DL_lines2)
+pattern22 <- "2016"
+DL_lines2 <- sub(pattern22, "", DL_lines2)
+pattern23 <- " disabled "
+DL_lines2 <- sub(pattern23, "", DL_lines2)
+pattern24 <- "disabled "
+DL_lines2 <- sub(pattern24, "", DL_lines2)
+pattern25 <- " disabled"
+DL_lines2 <- sub(pattern25, "", DL_lines2)
+
+wordcloud(VCorpus(VectorSource(DL_lines2)), max.words = 15, scale =c(5.5,.4), colors = topo.colors(n=30), random.color = TRUE)
+
+```
+
+### Next steps
+
+* Finish text analysis
+    + Pull out player name
+    + Pull out team name
+
+* De-duplicate transaction data so that placements, transfers, and activations for the same player are included in the same row for a single player
+    + Calculate time on DL
+
+* Merge baseball reference data on hitter and pitcher stats and characteristics that has already been downloaded
+    + Match on multiple characteristics to ensure that player is correct since there are many comon names
+
+* Run logistic regression on 20% sample of data to train
+
+* Use model to predict outcome for the remaining 80% of data
+
+## Schedule of Weekly Tasks/Goals ![](https://upload.wikimedia.org/wikipedia/en/1/1e/Baseball_%28crop%29.jpg){width=30px}  
+| Week        | Task                                                                        |
+|:-----------:|:----------------------------------------------------------------------------|
+| March 26 | Finish text analysis of transactio data and merge Baseball Reference data on player characteristics of interest and add to disabled list data matching by player name, position, and team |
+| April 2 | Create Table 1 for descriptive statistics, create tables/graphs for model results 
+| April 2 | Write first draft of introduction and results sections of manuscript |
+| April 9 | Write discussion/conclusions section of manuscript |
+| April 16 | Submit manuscript |
+| April 23 | Submit presentation | 
+
+## Link ![](https://upload.wikimedia.org/wikipedia/en/1/1e/Baseball_%28crop%29.jpg){width=30px} 
+The link for this file is located at <https://github.com/lpgleason/Project.git>.

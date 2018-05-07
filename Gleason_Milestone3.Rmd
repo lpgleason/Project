@@ -3,9 +3,9 @@ title: "NURSG 741 Project"
 author: "Lacey Gleason"
 date: "May 2, 2018"
 output:
-  html_document: default
-  pdf_document: default
   word_document: default
+  pdf_document: default
+  html_document: default
   bibliography: bibliography.bib
 ---
 
